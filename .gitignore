@@ -1,0 +1,13 @@
+
+vendor/
+composer.lock
+local_test/
+.idea
+
+.phpunit*
+
+temp
+sample/temp
+test/Test/temp
+test/result.txt
+main.php
