@@ -23,6 +23,6 @@
     "phpunit/phpunit": "^9.5.9"
   },
   "autoload": {
-		"psr-4": {"Tos\\": "src/"}
+    "psr-4": {"Tos\\": "src/"}
   }
 }
