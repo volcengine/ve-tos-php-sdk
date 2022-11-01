@@ -51,10 +51,6 @@ class UploadPartBasicInput
      * @var string
      */
     private $ssecKeyMD5;
-    /**
-     * @var string
-     */
-    private $serverSideEncryption;
 
     /**
      * @param string $bucket
@@ -196,22 +192,6 @@ class UploadPartBasicInput
     public function setSSECKeyMD5($ssecKeyMD5)
     {
         $this->ssecKeyMD5 = $ssecKeyMD5;
-    }
-
-    /**
-     * @return string
-     */
-    public function getServerSideEncryption()
-    {
-        return $this->serverSideEncryption;
-    }
-
-    /**
-     * @param string $serverSideEncryption
-     */
-    public function setServerSideEncryption($serverSideEncryption)
-    {
-        $this->serverSideEncryption = $serverSideEncryption;
     }
 
 }
