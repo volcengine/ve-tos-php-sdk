@@ -471,7 +471,7 @@ trait InputTranslator
         $key = self::checkKey($input->getKey());
         $headers = [];
         self::dealContentLengthAndContentMD5($input, $headers);
-        self::dealSse($input, $headers);
+        self::dealSse($input, $headers, false);
         if (!$input->getContent()) {
             $headers[Constant::HeaderContentLength] = 0;
         }

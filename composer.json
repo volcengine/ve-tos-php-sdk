@@ -1,8 +1,8 @@
 {
   "name": "volcengine/ve-tos-php-sdk",
   "description": "PHP SDK for volcengine TOS",
-  "version" : "2.0.0",
   "license": "Apache 2.0",
+  "version": "2.0.0",
   "type": "library",
   "authors": [
     {
@@ -23,6 +23,8 @@
     "phpunit/phpunit": "^9.5.9"
   },
   "autoload": {
-    "psr-4": {"Tos\\": "src/"}
+    "psr-4": {
+      "Tos\\": "src/"
+    }
   }
 }

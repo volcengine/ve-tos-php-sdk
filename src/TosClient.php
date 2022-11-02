@@ -244,10 +244,12 @@ class TosClient
         }
 
         if ($bucket = $input->getBucket()) {
+            $bucket = self::checkBucket($bucket);
             $request->bucket = $bucket;
         }
 
         if ($key = $input->getKey()) {
+            $key = self::checkKey($key);
             $request->key = $key;
         }
 
@@ -273,7 +275,7 @@ class TosClient
                 $request->headers = [];
             }
 
-            $request->headers[Constant::HeaderHost] = $this->cp->getHost($bucket, $domain);
+            $request->headers[Constant::HeaderHost] = $this->cp->getHost($request->bucket, $domain);
             $signedHeaders = null;
             $canonicalHeaders = self::getCanonicalHeaders($request, $signedHeaders, $signedHeader);
 
@@ -298,7 +300,7 @@ class TosClient
             $request->queries['X-Tos-Signature'] = rawurlencode($signature);
         }
 
-        $signedUrl = $this->cp->getEndpoint($request->bucket, $request->key, $schema, $domain);
+        $signedUrl = $this->cp->getEndpoint($request->bucket, $request->key, $schema, $domain, true);
         if (count($request->queries) > 0) {
             $signedUrl .= '?';
             if (count($signedHeader) > 0) {

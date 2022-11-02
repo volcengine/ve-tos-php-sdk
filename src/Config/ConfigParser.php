@@ -135,7 +135,7 @@ class ConfigParser
     /**
      * @return string
      */
-    public function getEndpoint($bucket = '', $key = '', $schema = '', $domain = '')
+    public function getEndpoint($bucket = '', $key = '', $schema = '', $domain = '', $mustAddKey = false)
     {
         if (!$schema) {
             $schema = $this->schema;
@@ -146,13 +146,16 @@ class ConfigParser
         }
 
         $endpoint = $schema;
-        if (strval($bucket) !== '') {
-            $endpoint .= $bucket . '.' . $domain;
-            if (strval($key) !== '') {
+        if (($bkt = strval($bucket)) !== '') {
+            $endpoint .= $bkt . '.' . $domain;
+            if ($key !== '') {
                 $endpoint .= '/' . Helper::urlencodeWithSafe($key);
             }
         } else {
             $endpoint .= $domain;
+            if ($mustAddKey && $key !== '') {
+                $endpoint .= '/' . Helper::urlencodeWithSafe($key);
+            }
         }
 
         return $endpoint;
