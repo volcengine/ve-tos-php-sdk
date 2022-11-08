@@ -32,7 +32,7 @@ class PutObjectFromFileInput extends PutObjectBasicInput
     public function __construct($bucket = '', $key = '', $filePath = '')
     {
         parent::__construct($bucket, $key);
-        $this->$filePath = $filePath;
+        $this->filePath = $filePath;
     }
 
     /**

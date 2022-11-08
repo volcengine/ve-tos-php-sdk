@@ -69,6 +69,22 @@ class PutObjectTest extends TestCommon
         $output->getContent()->close();
         $this->assertEquals(count($output->getMeta()), 0);
 
+        // 测试流式上传
+        $key2 = self::genRandomString(10);
+        $getOutput = $client->getObject(new GetObjectInput($bucket, $key));
+        $this->assertTrue(strlen($getOutput->getRequestId()) > 0);
+        $output = $client->putObject(new PutObjectInput($bucket, $key2, $getOutput->getContent()));
+        $getOutput->getContent()->close();
+        $this->assertTrue(strlen($output->getRequestId()) > 0);
+        $this->assertTrue(strlen($output->getETag()) > 0);
+
+        $output = $client->getObject(new GetObjectInput($bucket, $key2));
+        $this->assertTrue(strlen($output->getRequestId()) > 0);
+        $this->assertEquals($output->getContent()->getContents(), $data);
+        $output->getContent()->close();
+        $this->assertEquals(count($output->getMeta()), 0);
+
+
         $input->setStorageClass(Enum::StorageClassIa);
         $input->setACL(Enum::ACLPublicRead);
         $input->setContentDisposition('test-disposition');
@@ -114,6 +130,7 @@ class PutObjectTest extends TestCommon
         $this->assertEquals($output->getContent()->getContents(), '');
         $output->getContent()->close();
         $this->assertEquals($output->getContentLength(), 0);
+
     }
 
     public function testAbnormal()

@@ -50,6 +50,7 @@ class TestCommon extends TestCase
     protected static $httpsClient;
     protected static $fixedBucket;
     protected static $nonExistsBucket;
+    protected static $bigSampleFilePath;
 
     public function addBucketToTearDown($bucket)
     {
@@ -98,6 +99,10 @@ class TestCommon extends TestCase
     {
         if (self::$fixedBucket) {
             self::cleanBucket(self::$fixedBucket);
+        }
+
+        if (file_exists(self::$bigSampleFilePath)) {
+            unlink(self::$bigSampleFilePath);
         }
     }
 
@@ -192,6 +197,37 @@ class TestCommon extends TestCase
 
     public static function getNonExistsBucket()
     {
-        return $nonExistsBucket;
+        return self::$nonExistsBucket;
+    }
+
+    public static function createSampleFile($filePath, $count = 500000)
+    {
+        if (file_exists($filePath)) {
+            return;
+        }
+        $filePath = iconv('UTF-8', 'GBK', $filePath);
+        if (is_string($filePath) && $filePath !== '') {
+            $fp = null;
+            $dir = dirname($filePath);
+            try {
+                if (!is_dir($dir)) {
+                    mkdir($dir, 0755, true);
+                }
+
+                if (($fp = fopen($filePath, 'w'))) {
+                    for ($i = 0; $i < $count; $i++) {
+                        fwrite($fp, uniqid() . "\n");
+                        fwrite($fp, uniqid() . "\n");
+                        if ($i % 100 === 0) {
+                            fflush($fp);
+                        }
+                    }
+                }
+            } finally {
+                if ($fp) {
+                    fclose($fp);
+                }
+            }
+        }
     }
 }

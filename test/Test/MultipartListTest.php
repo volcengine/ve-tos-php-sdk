@@ -227,6 +227,7 @@ class MultipartListTest extends TestCommon
 
         try {
             $input = new UploadPartInput(self::$nonExistsBucket, self::genRandomString(3), '123');
+            $input->setContent('hello world');
             $client->uploadPart($input);
             $this->assertTrue(false);
         } catch (TosServerException $ex) {
@@ -250,6 +251,7 @@ class MultipartListTest extends TestCommon
 
         try {
             $input = new UploadPartInput(self::$fixedBucket, self::genRandomString(400), $output->getUploadID());
+            $input->setContent('hello world');
             $client->uploadPart($input);
             $this->assertTrue(false);
         } catch (TosServerException $ex) {
@@ -259,6 +261,7 @@ class MultipartListTest extends TestCommon
 
         try {
             $input = new UploadPartInput(self::$fixedBucket, $key, '123');
+            $input->setContent('hello world');
             $client->uploadPart($input);
             $this->assertTrue(false);
         } catch (TosServerException $ex) {

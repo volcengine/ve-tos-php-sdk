@@ -66,6 +66,7 @@ class ListObjectsTest extends TestCommon
             $output = $client->listObjects($input);
             foreach ($output->getContents() as $content) {
                 $keysFromServer[] = $content->getKey();
+                $this->assertTrue(strlen($content->getHashCrc64ecma()) > 0);
             }
 
             if (!$output->isTruncated()) {
