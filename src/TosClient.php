@@ -27,6 +27,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\StreamInterface;
 use Tos\Config\ConfigParser;
 use Tos\Exception\TosClientException;
+use Tos\Exception\TosServerException;
 use Tos\Helper\Helper;
 use Tos\Model\AbortMultipartUploadInput;
 use Tos\Model\AbortMultipartUploadOutput;
@@ -51,6 +52,8 @@ use Tos\Model\GetObjectACLInput;
 use Tos\Model\GetObjectACLOutput;
 use Tos\Model\GetObjectInput;
 use Tos\Model\GetObjectOutput;
+use Tos\Model\GetObjectToFileInput;
+use Tos\Model\GetObjectToFileOutput;
 use Tos\Model\HeadBucketInput;
 use Tos\Model\HeadBucketOutput;
 use Tos\Model\HeadObjectInput;
@@ -70,12 +73,16 @@ use Tos\Model\PreSignedURLInput;
 use Tos\Model\PreSignedURLOutput;
 use Tos\Model\PutObjectACLInput;
 use Tos\Model\PutObjectACLOutput;
+use Tos\Model\PutObjectFromFileInput;
+use Tos\Model\PutObjectFromFileOutput;
 use Tos\Model\PutObjectInput;
 use Tos\Model\PutObjectOutput;
 use Tos\Model\SetObjectMetaInput;
 use Tos\Model\SetObjectMetaOutput;
 use Tos\Model\UploadPartCopyInput;
 use Tos\Model\UploadPartCopyOutput;
+use Tos\Model\UploadPartFromFileInput;
+use Tos\Model\UploadPartFromFileOutput;
 use Tos\Model\UploadPartInput;
 use Tos\Model\UploadPartOutput;
 
@@ -89,16 +96,19 @@ use Tos\Model\UploadPartOutput;
  * @method DeleteObjectOutput deleteObject(DeleteObjectInput $input);
  * @method DeleteMultiObjectsOutput deleteMultiObjects(DeleteMultiObjectsInput $input);
  * @method GetObjectOutput getObject(GetObjectInput $input);
+ * @method GetObjectToFileOutput getObjectToFile(GetObjectToFileInput $input);
  * @method GetObjectACLOutput getObjectACL(GetObjectACLInput $input);
  * @method HeadObjectOutput headObject(HeadObjectInput $input);
  * @method AppendObjectOutput appendObject(AppendObjectInput $input);
  * @method ListObjectsOutput listObjects(ListObjectsInput $input);
  * @method ListObjectVersionsOutput listObjectVersions(ListObjectVersionsInput $input);
  * @method PutObjectOutput putObject(PutObjectInput $input);
+ * @method PutObjectFromFileOutput putObjectFromFile(PutObjectFromFileInput $input);
  * @method PutObjectACLOutput putObjectACL(PutObjectACLInput $input);
  * @method SetObjectMetaOutput setObjectMeta(SetObjectMetaInput $input);
  * @method CreateMultipartUploadOutput createMultipartUpload(CreateMultipartUploadInput $input);
  * @method UploadPartOutput uploadPart(UploadPartInput $input);
+ * @method UploadPartFromFileOutput uploadPartFromFile(UploadPartFromFileInput $input);
  * @method CompleteMultipartUploadOutput completeMultipartUpload(CompleteMultipartUploadInput $input);
  * @method AbortMultipartUploadOutput abortMultipartUpload(AbortMultipartUploadInput $input);
  * @method UploadPartCopyOutput uploadPartCopy(UploadPartCopyInput $input);
@@ -119,9 +129,11 @@ class TosClient
      */
     private $client;
 
+
     use Model\InputTranslator;
     use Model\OutputParser;
     use Auth\Signer;
+    use Upload\Uploader;
 
     /**
      * @param array|ConfigParser|string $configOrRegion
@@ -143,17 +155,15 @@ class TosClient
             throw new TosClientException('invalid config');
         }
 
-        $this->client = new Client(
-            [
-                'timeout' => 0,
-                'read_timeout' => $this->cp->getSocketTimeout() / 1000,
-                'connect_timeout' => $this->cp->getConnectionTimeout() / 1000,
-                'allow_redirects' => false,
-                'verify' => $this->cp->isEnableVerifySSL(),
-                'http_errors' => false,
-                'decode_content' => false,
-            ]
-        );
+        $this->client = new Client([
+            'timeout' => 0,
+            'read_timeout' => $this->cp->getSocketTimeout() / 1000,
+            'connect_timeout' => $this->cp->getConnectionTimeout() / 1000,
+            'allow_redirects' => false,
+            'verify' => $this->cp->isEnableVerifySSL(),
+            'http_errors' => false,
+            'decode_content' => false,
+        ]);
     }
 
     public function __call($method, $args)
@@ -170,66 +180,109 @@ class TosClient
         $transFn = __CLASS__ . '::trans' . $method . 'Input';
         $parseFn = __CLASS__ . '::parse' . $method . 'Output';
         if (is_callable($transFn) && is_callable($parseFn)) {
-            $request = $transFn($input);
-            if ($method === 'PutObject' || $method === 'AppendObject' || $method === 'UploadPart') {
-                if (!$request->body) {
-                    $request->headers[Constant::HeaderContentLength] = 0;
+            $body = null;
+            $closeBody = false;
+            try {
+                if ($method === 'GetObjectToFile') {
+                    list($request, $filePath, $doMkdir) = $transFn($input);
+                    $response = $this->doRequest($request, !$doMkdir && $input->isStreamMode());
+                    return $parseFn($response, $filePath, $doMkdir);
+                }
+
+                $request = $transFn($input);
+                if ($method === 'PutObjectFromFile' || $method === 'UploadPartFromFile') {
+                    $closeBody = true;
+                } else if ($method === 'PutObject' || $method === 'AppendObject' || $method === 'UploadPart') {
+                    if (!$request->body) {
+                        $request->headers[Constant::HeaderContentLength] = 0;
+                    }
+                }
+                $body = $request->body;
+                $response = $this->doRequest($request, $method === 'GetObject' && $input->isStreamMode());
+                if ($method === 'UploadPart' || $method === 'UploadPartCopy' || $method == 'UploadPartFromFile') {
+                    return $parseFn($response, $input->getPartNumber());
+                }
+                return $parseFn($response);
+            } catch (TosClientException $ex) {
+                throw $ex;
+            } catch (TosServerException $ex) {
+                throw $ex;
+            } catch (TransferException $ex) {
+                throw new TosClientException(sprintf('do http request for %s error, %s', $this->cp->getEndpoint($request->bucket, $request->key), $ex->getMessage()), $ex);
+            } catch (GuzzleException $ex) {
+                throw new TosClientException(sprintf('do http request for %s error, %s', $this->cp->getEndpoint($request->bucket, $request->key), $ex->getMessage()), $ex);
+            } catch (\Exception $ex) {
+                throw new TosClientException(sprintf('unknown error, %s', $ex->getMessage()), $ex);
+            } finally {
+                if ($closeBody && $body) {
+                    if (is_resource($body)) {
+                        fclose($body);
+                    } else if ($body instanceof StreamInterface) {
+                        $body->close();
+                    }
                 }
             }
-            $response = $this->doRequest($request);
-            if ($method === 'UploadPart' || $method === 'UploadPartCopy') {
-                return $parseFn($response, $input->getPartNumber());
-            }
-
-            return $parseFn($response);
         }
         throw new TosClientException(sprintf('unknown method %s error', $method));
     }
 
     /**
      * @param HttpRequest $request
+     * @param bool $streamFlag
      * @return ResponseInterface
+     * @throws GuzzleException
      */
-    private function &doRequest(HttpRequest &$request)
+    private function &doRequest(HttpRequest &$request, $stream = false)
+    {
+        $response = $this->doRequestAsync($request, $stream)->wait();
+        return $response;
+    }
+
+    private function &doRequestAsync(HttpRequest &$request, $stream = false)
+    {
+        list($method, $requestUri, $headers, $body) = $this->prepareRequest($request);
+        $options = [
+            'headers' => $headers,
+            'stream' => $stream,
+            'body' => $body,
+        ];
+
+        $promise = $this->client->requestAsync($method, $requestUri, $options);
+        return $promise;
+    }
+
+    private function &prepareRequest(HttpRequest &$request)
     {
         self::sign($request, $this->cp->getHost($request->bucket), $this->cp->getAk(),
             $this->cp->getSk(), $this->cp->getSecurityToken(), $this->cp->getRegion());
 
         $headers = $request->headers;
         $headers[Constant::HeaderUserAgent] = $this->cp->getUserAgent();
+        $headers[Constant::HeaderConnection] = 'Keep-Alive';
         $requestUri = $this->cp->getEndpoint($request->bucket, $request->key);
-
         $queries = $request->queries;
         $body = $request->body;
-        try {
-            $options = [
-                'headers' => $headers,
-                'stream' => true,
-            ];
-            if ($queries && count($queries) > 0) {
-                $requestUri .= '?';
-                foreach ($queries as $key => $val) {
-                    $requestUri .= $key . '=' . $val . '&';
-                }
-                $requestUri = substr($requestUri, 0, strlen($requestUri) - 1);
+
+        if ($queries && count($queries) > 0) {
+            $requestUri .= '?';
+            foreach ($queries as $key => $val) {
+                $requestUri .= $key . '=' . $val . '&';
             }
-            if ($body) {
-                if ((is_resource($body) && ftell($body) > 0) || ($body instanceof StreamInterface && $body->tell() > 0)) {
-                    // fix auto rewind bug in CurlFactory->applyBody
-                    $options['body'] = new NoSeekStream(new Stream($body));
-                } else {
-                    $options['body'] = $body;
-                }
-            }
-            $response = $this->client->request($request->method, $requestUri, $options);
-            return $response;
-        } catch (GuzzleException $ex) {
-            throw new TosClientException(sprintf('do http request for %s error, %s', $requestUri, $ex->getMessage()), $ex);
-        } catch (TransferException $ex) {
-            throw new TosClientException(sprintf('do http request for %s error, %s', $requestUri, $ex->getMessage()), $ex);
-        } catch (\Exception $ex) {
-            throw new TosClientException(sprintf('unknown error, %s', $ex->getMessage()), $ex);
+            $requestUri = substr($requestUri, 0, strlen($requestUri) - 1);
         }
+
+        if ($body) {
+            if (is_resource($body) && ftell($body) > 0) {
+                // fix auto rewind bug in CurlFactory->applyBody
+                $body = new NoSeekStream(new Stream($body));
+            } else if ($body instanceof StreamInterface && $body->tell() > 0) {
+                // fix auto rewind bug in CurlFactory->applyBody
+                $body = new NoSeekStream($body);
+            }
+        }
+
+        $result = [$request->method, $requestUri, $headers, $body];
+        return $result;
     }
 
     /**

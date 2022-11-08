@@ -136,6 +136,51 @@ trait InputTranslator
         return $request;
     }
 
+    protected static function &transPutObjectFromFileInput(PutObjectFromFileInput &$input)
+    {
+        $bucket = self::checkBucket($input->getBucket());
+        $key = self::checkKey($input->getKey());
+
+        $filePath = trim($input->getFilePath());
+
+        if (!$filePath) {
+            throw new TosClientException('empty file path');
+        }
+
+        if (!file_exists($filePath)) {
+            throw new TosClientException('the specified file path does not exist');
+        }
+
+        if (is_dir($filePath)) {
+            throw new TosClientException('the specified file path is a dir');
+        }
+
+        $headers = [];
+
+        self::dealContentLengthAndContentMD5($input, $headers);
+        if (!isset($headers[Constant::HeaderContentLength])) {
+            $headers[Constant::HeaderContentLength] = filesize($filePath);
+        }
+
+        if ($contentSHA256 = $input->getContentSHA256()) {
+            $headers[Constant::HeaderContentSHA256] = $contentSHA256;
+        }
+        self::dealHttpBasicHeader($input, $headers);
+        self::dealSse($input, $headers);
+        self::dealAcl($input, $headers, false);
+        self::dealMeta($input, $headers);
+        self::dealScAndWrl($input, $headers);
+
+        $request = new HttpRequest();
+        $request->operation = 'putObjectFromFile';
+        $request->method = Enum::HttpMethodPut;
+        $request->bucket = $bucket;
+        $request->key = $key;
+        $request->headers = $headers;
+        $request->body = fopen($filePath, 'r');
+        return $request;
+    }
+
     protected static function &transGetObjectInput(GetObjectInput &$input)
     {
         $bucket = self::checkBucket($input->getBucket());
@@ -196,6 +241,45 @@ trait InputTranslator
         $request->headers = $headers;
         $request->queries = $queries;
         return $request;
+    }
+
+    protected static function &transGetObjectToFileInput(GetObjectToFileInput &$input)
+    {
+        $filePath = trim($input->getFilePath());
+        if (!$filePath) {
+            throw new TosClientException('empty file path');
+        }
+
+        $dir = dirname($filePath);
+        if (!file_exists($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        $doMkdir = false;
+        $key = self::checkKey($input->getKey());
+        if (file_exists($filePath)) {
+            if (is_dir($filePath)) {
+                if ($key[strlen($key) - 1] === '/') {
+                    // mkdir
+                    $doMkdir = true;
+                }
+                $filePath .= DIRECTORY_SEPARATOR . $key;
+            }
+        } else if ($filePath[strlen($filePath) - 1] === DIRECTORY_SEPARATOR) {
+            mkdir($filePath, 0755, true);
+            if ($key[strlen($key) - 1] === '/') {
+                // mkdir
+                $doMkdir = true;
+            }
+            $filePath .= $key;
+        }
+
+        if ($doMkdir) {
+            $result = [self::transHeadObjectInput($input), $filePath, $doMkdir];
+        } else {
+            $result = [self::transGetObjectInput($input), $filePath, $doMkdir];
+        }
+        return $result;
     }
 
     protected static function &transDeleteObjectInput(DeleteObjectInput &$input)
@@ -275,7 +359,7 @@ trait InputTranslator
         return $request;
     }
 
-    protected static function &transHeadObjectInput(HeadObjectInput &$input)
+    protected static function &transHeadObjectInput(&$input)
     {
         $bucket = self::checkBucket($input->getBucket());
         $key = self::checkKey($input->getKey());
@@ -303,6 +387,9 @@ trait InputTranslator
     {
         $bucket = self::checkBucket($input->getBucket());
         $key = self::checkKey($input->getKey());
+        if (!$input->getContent()) {
+            throw new TosClientException('empty content');
+        }
 
         $headers = [];
 
@@ -465,16 +552,47 @@ trait InputTranslator
         return $request;
     }
 
+    protected static function &transUploadFileInput(UploadFileInput &$input)
+    {
+        $filePath = self::checkFilePath($input->getFilePath());
+
+        $partSize = intval($input->getPartSize());
+        if ($partSize < 5 * 1024 * 1024 || $partSize > 5 * 1024 * 1024 * 1024) {
+            throw new TosClientException('invalid part size, the size must be [5242880, 5368709120]');
+        }
+
+        $taskNum = intval($input->getTaskNum());
+        if ($taskNum <= 0) {
+            $taskNum = 1;
+        }
+
+        $checkpointFile = null;
+        if ($input->isEnableCheckpoint()) {
+            $bucket = self::checkBucket($input->getBucket());
+            $key = self::checkKey($input->getKey());
+
+            $checkpointFile = trim($input->getCheckpointFile());
+            if (is_dir($checkpointFile)) {
+                $checkpointFile .= DIRECTORY_SEPARATOR . basename($filePath) . '.' . base64_encode(md5($bucket . '.' . $key)) . '.upload';
+            } else if ($checkpointFile === '') {
+                $checkpointFile = dirname($filePath) . DIRECTORY_SEPARATOR . basename($filePath) . '.' . base64_encode(md5($bucket . '.' . $key)) . '.upload';
+            }
+        }
+
+        $result = [$filePath, $partSize, $taskNum, $checkpointFile];
+        return $result;
+    }
+
     protected static function &transUploadPartInput(UploadPartInput &$input)
     {
         $bucket = self::checkBucket($input->getBucket());
         $key = self::checkKey($input->getKey());
+        if (!$input->getContent()) {
+            throw new TosClientException('empty content');
+        }
         $headers = [];
         self::dealContentLengthAndContentMD5($input, $headers);
         self::dealSse($input, $headers, false);
-        if (!$input->getContent()) {
-            $headers[Constant::HeaderContentLength] = 0;
-        }
 
         $queries = [];
         self::dealUploadIdAndPartNumber($input, $queries);
@@ -486,6 +604,49 @@ trait InputTranslator
         $request->headers = $headers;
         $request->queries = $queries;
         $request->body = $input->getContent();
+        return $request;
+    }
+
+    protected static function &transUploadPartFromFileInput(UploadPartFromFileInput &$input)
+    {
+        $bucket = self::checkBucket($input->getBucket());
+        $key = self::checkKey($input->getKey());
+
+        $filePath = self::checkFilePath($input->getFilePath());
+
+        $file = fopen($filePath, 'r');
+        $offset = intval($input->getOffset());
+        $fileSize = filesize($filePath);
+        if ($offset < 0 || $offset > $fileSize) {
+            throw new TosClientException('invalid offset');
+        } else if ($offset > 0) {
+            fseek($file, $offset, 0);
+        }
+
+        $headers = [];
+        $partSize = $input->getPartSize();
+        if (isset($partSize) && ($partSize = intval($partSize)) >= 0) {
+            $headers[Constant::HeaderContentLength] = $partSize;
+        } else {
+            $headers[Constant::HeaderContentLength] = $fileSize - $offset;
+        }
+
+        if ($contentMD5 = $input->getContentMD5()) {
+            $headers[Constant::HeaderContentMD5] = $contentMD5;
+        }
+        self::dealSse($input, $headers, false);
+
+        $queries = [];
+        self::dealUploadIdAndPartNumber($input, $queries);
+        $request = new HttpRequest();
+        $request->operation = 'uploadPartFromFile';
+        $request->method = Enum::HttpMethodPut;
+        $request->bucket = $bucket;
+        $request->key = $key;
+        $request->headers = $headers;
+        $request->queries = $queries;
+//        $request->body = new StreamReader(new Stream($file), $headers[Constant::HeaderContentLength]);
+        $request->body = $file;
         return $request;
     }
 
@@ -628,7 +789,6 @@ trait InputTranslator
         $request->queries = $queries;
         return $request;
     }
-
 
     protected static function dealHttpBasicHeader(&$input, &$headers)
     {
@@ -908,5 +1068,24 @@ trait InputTranslator
             default:
                 throw new TosClientException('invalid grantee type');
         }
+    }
+
+    protected static function checkFilePath($filePath)
+    {
+        $filePath = trim($filePath);
+
+        if (!$filePath) {
+            throw new TosClientException('empty file path');
+        }
+
+        if (!file_exists($filePath)) {
+            throw new TosClientException('the specified file path does not exist');
+        }
+
+        if (is_dir($filePath)) {
+            throw new TosClientException('the specified file path is a dir');
+        }
+
+        return $filePath;
     }
 }

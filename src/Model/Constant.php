@@ -60,6 +60,7 @@ class Constant
     const HeaderMetadataDirective = Constant::HeaderPrefix . 'metadata-directive';
 
     const HeaderUserAgent = 'User-Agent';
+    const HeaderConnection = 'Connection';
     const HeaderContentLength = 'Content-Length';
     const HeaderContentMD5 = 'Content-MD5';
     const HeaderCacheControl = 'Cache-Control';

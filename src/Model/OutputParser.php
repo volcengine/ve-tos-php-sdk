@@ -17,9 +17,12 @@
 
 namespace Tos\Model;
 
+use GuzzleHttp\Psr7\Utils;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\StreamInterface;
 use Tos\Exception\TosClientException;
 use Tos\Exception\TosServerException;
+use Tos\Helper\StreamReader;
 
 trait OutputParser
 {
@@ -91,42 +94,84 @@ trait OutputParser
 
     protected static function &parsePutObjectOutput(ResponseInterface &$response)
     {
+        return self::parsePutObjectFromFileOutput($response);
+    }
+
+    protected static function &parsePutObjectFromFileOutput(ResponseInterface &$response)
+    {
         $requestInfo = self::getRequestInfo($response);
         self::checkResponse($response, $requestInfo);
 
-        $output = new PutObjectOutput($requestInfo, self::getHeaderLine($response, Constant::HeaderETag),
+        $output = new PutObjectFromFileOutput($requestInfo, self::getHeaderLine($response, Constant::HeaderETag),
             self::getHeaderLine($response, Constant::HeaderSSECAlgorithm), self::getHeaderLine($response, Constant::HeaderSSECKeyMD5),
             self::getHeaderLine($response, Constant::HeaderVersionId), self::getHeaderLine($response, Constant::HeaderHashCrc64ecma));
         return $output;
     }
 
-    protected static function &parseGetObjectOutput(ResponseInterface &$response, $isGetObjectOutput = true)
+    protected static function &parseGetObjectOutput(ResponseInterface &$response)
     {
         $requestInfo = self::getRequestInfo($response);
         $content = self::checkResponse($response, $requestInfo, false);
-        if ($isGetObjectOutput) {
-            $output = new GetObjectOutput($requestInfo, self::getHeaderLine($response, Constant::HeaderContentRange),
-                self::getHeaderLine($response, Constant::HeaderETag), self::transRFC1123TimeInHeader($response, Constant::HeaderLastModified),
-                boolval(self::getHeaderLine($response, Constant::HeaderDeleteMarker)), self::getHeaderLine($response, Constant::HeaderSSECAlgorithm),
-                self::getHeaderLine($response, Constant::HeaderSSECKeyMD5), self::getHeaderLine($response, Constant::HeaderVersionId),
-                self::getHeaderLine($response, Constant::HeaderWebsiteRedirectLocation), self::getHeaderLine($response, Constant::HeaderObjectType),
-                self::getHeaderLine($response, Constant::HeaderHashCrc64ecma), self::getHeaderLine($response, Constant::HeaderStorageClass),
-                self::parseMeta($response), intval(self::getHeaderLine($response, Constant::HeaderContentLength)),
-                self::getHeaderLine($response, Constant::HeaderCacheControl), rawurldecode(self::getHeaderLine($response, Constant::HeaderContentDisposition)),
-                self::getHeaderLine($response, Constant::HeaderContentEncoding), self::getHeaderLine($response, Constant::HeaderContentLanguage),
-                self::getHeaderLine($response, Constant::HeaderContentType), self::transRFC1123TimeInHeader($response, Constant::HeaderExpires), $content);
+        $content = new StreamReader($content, intval(self::getHeaderLine($response, Constant::HeaderContentLength)));
+        $output = new GetObjectOutput($requestInfo, self::getHeaderLine($response, Constant::HeaderContentRange),
+            self::getHeaderLine($response, Constant::HeaderETag), self::transRFC1123TimeInHeader($response, Constant::HeaderLastModified),
+            boolval(self::getHeaderLine($response, Constant::HeaderDeleteMarker)), self::getHeaderLine($response, Constant::HeaderSSECAlgorithm),
+            self::getHeaderLine($response, Constant::HeaderSSECKeyMD5), self::getHeaderLine($response, Constant::HeaderVersionId),
+            self::getHeaderLine($response, Constant::HeaderWebsiteRedirectLocation), self::getHeaderLine($response, Constant::HeaderObjectType),
+            self::getHeaderLine($response, Constant::HeaderHashCrc64ecma), self::getHeaderLine($response, Constant::HeaderStorageClass),
+            self::parseMeta($response), $content->getSize(),
+            self::getHeaderLine($response, Constant::HeaderCacheControl), rawurldecode(self::getHeaderLine($response, Constant::HeaderContentDisposition)),
+            self::getHeaderLine($response, Constant::HeaderContentEncoding), self::getHeaderLine($response, Constant::HeaderContentLanguage),
+            self::getHeaderLine($response, Constant::HeaderContentType), self::transRFC1123TimeInHeader($response, Constant::HeaderExpires), $content);
+        return $output;
+    }
+
+    protected static function &parseGetObjectToFileOutput(ResponseInterface &$response, $filePath, $doMkdir)
+    {
+        $requestInfo = self::getRequestInfo($response);
+        $content = self::checkResponse($response, $requestInfo, false);
+        $content = new StreamReader($content, intval(self::getHeaderLine($response, Constant::HeaderContentLength)));
+        if ($doMkdir) {
+            if (!is_dir($filePath)) {
+                mkdir($filePath, 0755, true);
+            }
         } else {
-            $output = new GetObjectToFileOutput($requestInfo, self::getHeaderLine($response, Constant::HeaderContentRange),
-                self::getHeaderLine($response, Constant::HeaderETag), self::transRFC1123TimeInHeader($response, Constant::HeaderLastModified),
-                boolval(self::getHeaderLine($response, Constant::HeaderDeleteMarker)), self::getHeaderLine($response, Constant::HeaderSSECAlgorithm),
-                self::getHeaderLine($response, Constant::HeaderSSECKeyMD5), self::getHeaderLine($response, Constant::HeaderVersionId),
-                self::getHeaderLine($response, Constant::HeaderWebsiteRedirectLocation), self::getHeaderLine($response, Constant::HeaderObjectType),
-                self::getHeaderLine($response, Constant::HeaderHashCrc64ecma), self::getHeaderLine($response, Constant::HeaderStorageClass),
-                self::parseMeta($response), intval(self::getHeaderLine($response, Constant::HeaderContentLength)),
-                self::getHeaderLine($response, Constant::HeaderCacheControl), rawurldecode(self::getHeaderLine($response, Constant::HeaderContentDisposition)),
-                self::getHeaderLine($response, Constant::HeaderContentEncoding), self::getHeaderLine($response, Constant::HeaderContentLanguage),
-                self::getHeaderLine($response, Constant::HeaderContentType), self::transRFC1123TimeInHeader($response, Constant::HeaderExpires));
+            $file = null;
+            $tempFilePath = null;
+            try {
+                $tempFilePath = $filePath . '_' . uniqid();
+                $file = fopen($tempFilePath, 'w');
+                Utils::copyToStream(Utils::streamFor($content), Utils::streamFor($file));
+                if (is_resource($file)) {
+                    fclose($file);
+                }
+                if (!rename($tempFilePath, $filePath)) {
+                    throw new TosClientException(sprintf('rename temp file %s to %s failed, will unlink temp file', $tempFilePath, $filePath));
+                }
+            } finally {
+                if (is_resource($file)) {
+                    fclose($file);
+                }
+
+                if ($tempFilePath && file_exists($tempFilePath)) {
+                    unlink($tempFilePath);
+                }
+
+                if ($content) {
+                    $content->close();
+                }
+            }
         }
+        $output = new GetObjectToFileOutput($requestInfo, self::getHeaderLine($response, Constant::HeaderContentRange),
+            self::getHeaderLine($response, Constant::HeaderETag), self::transRFC1123TimeInHeader($response, Constant::HeaderLastModified),
+            boolval(self::getHeaderLine($response, Constant::HeaderDeleteMarker)), self::getHeaderLine($response, Constant::HeaderSSECAlgorithm),
+            self::getHeaderLine($response, Constant::HeaderSSECKeyMD5), self::getHeaderLine($response, Constant::HeaderVersionId),
+            self::getHeaderLine($response, Constant::HeaderWebsiteRedirectLocation), self::getHeaderLine($response, Constant::HeaderObjectType),
+            self::getHeaderLine($response, Constant::HeaderHashCrc64ecma), self::getHeaderLine($response, Constant::HeaderStorageClass),
+            self::parseMeta($response), $content->getSize(),
+            self::getHeaderLine($response, Constant::HeaderCacheControl), rawurldecode(self::getHeaderLine($response, Constant::HeaderContentDisposition)),
+            self::getHeaderLine($response, Constant::HeaderContentEncoding), self::getHeaderLine($response, Constant::HeaderContentLanguage),
+            self::getHeaderLine($response, Constant::HeaderContentType), self::transRFC1123TimeInHeader($response, Constant::HeaderExpires), $filePath);
         return $output;
     }
 
@@ -321,9 +366,14 @@ trait OutputParser
 
     protected static function &parseUploadPartOutput(ResponseInterface &$response, $partNumber)
     {
+        return self::parseUploadPartFromFileOutput($response, $partNumber);
+    }
+
+    protected static function &parseUploadPartFromFileOutput(ResponseInterface &$response, $partNumber)
+    {
         $requestInfo = self::getRequestInfo($response);
         self::checkResponse($response, $requestInfo);
-        $output = new UploadPartOutput($requestInfo, $partNumber,
+        $output = new UploadPartFromFileOutput($requestInfo, $partNumber,
             self::getHeaderLine($response, Constant::HeaderETag), self::getHeaderLine($response, Constant::HeaderSSECAlgorithm),
             self::getHeaderLine($response, Constant::HeaderSSECKeyMD5), self::getHeaderLine($response, Constant::HeaderHashCrc64ecma));
         return $output;
@@ -434,8 +484,9 @@ trait OutputParser
      */
     protected static function checkResponse(ResponseInterface &$response, RequestInfo &$requestInfo, $parseContents = true)
     {
+        $body = $response->getBody();
         if ($requestInfo->getStatusCode() >= 300) {
-            if (($contents = self::readContents($response)) && ($error = json_decode($contents, true))) {
+            if (($contents = self::readContents($body, $requestInfo)) && ($error = json_decode($contents, true))) {
 //                echo $error['canonical_request'] . PHP_EOL;
                 throw new TosServerException($requestInfo,
                     isset($error['Code']) ? $error['Code'] : '',
@@ -448,7 +499,7 @@ trait OutputParser
 
 
         if ($parseContents) {
-            if ($contents = self::readContents($response)) {
+            if ($contents = self::readContents($body, $requestInfo)) {
                 $result = json_decode($contents, true);
                 if (json_last_error() !== 0) {
                     throw new TosClientException(sprintf('unable to do serialization/deserialization, %s', json_last_error_msg()));
@@ -458,17 +509,17 @@ trait OutputParser
             return [];
         }
 
-        return $response->getBody();
+        return $body;
     }
 
-    protected static function readContents(ResponseInterface &$response)
+    protected static function readContents(StreamInterface &$body, RequestInfo &$requestInfo)
     {
         try {
-            return $response->getBody()->getContents();
+            return $body->getContents();
         } catch (\RuntimeException $ex) {
             throw new TosServerException($requestInfo, '', sprintf('check response error, %s', $ex->getMessage()));
         } finally {
-            $response->getBody()->close();
+            $body->close();
         }
     }
 

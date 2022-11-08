@@ -9,5 +9,10 @@ local_test/
 temp
 sample/temp
 test/Test/temp
+temp2
+sample/temp2
+test/Test/temp2
 test/result.txt
 main.php
+test.phar
+test.php

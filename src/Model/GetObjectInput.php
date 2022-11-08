@@ -97,6 +97,11 @@ class GetObjectInput
     private $range;
 
     /**
+     * @var bool
+     */
+    private $streamMode = true;
+
+    /**
      * @param $bucket
      * @param $key
      * @param $range
@@ -413,4 +418,21 @@ class GetObjectInput
     {
         $this->range = $range;
     }
+
+    /**
+     * @return bool
+     */
+    public function isStreamMode()
+    {
+        return $this->streamMode;
+    }
+
+    /**
+     * @param bool $streamMode
+     */
+    public function setStreamMode($streamMode)
+    {
+        $this->streamMode = $streamMode;
+    }
+    
 }

@@ -24,6 +24,7 @@ use Tos\Model\GetObjectInput;
 use Tos\Model\ListPartsInput;
 use Tos\Model\UploadedPart;
 use Tos\Model\UploadPartCopyInput;
+use Tos\Model\UploadPartFromFileInput;
 use Tos\Model\UploadPartInput;
 
 require_once 'TestCommon.php';
@@ -42,11 +43,18 @@ class MultipartUploadTest extends TestCommon
 
         $uploadId = $output->getUploadID();
 
-        $sampleFilePath = './temp/test.txt';
-        $this->createSampleFile($sampleFilePath);
+        $sampleFilePath = './temp/' . self::genRandomString(10) . '.txt';
+        if (!file_exists($sampleFilePath)) {
+            self::createSampleFile($sampleFilePath);
+            self::$bigSampleFilePath = $sampleFilePath;
+        }
+
+        $fileSize = filesize($sampleFilePath);
+        $source = md5_file($sampleFilePath);
 
         $firstPartSize = 5 * 1024 * 1024;
         $partNumber1 = 1;
+        $partNumber2 = 2;
         $file = null;
         try {
             $file = fopen($sampleFilePath, 'r');
@@ -56,6 +64,7 @@ class MultipartUploadTest extends TestCommon
             $output = $client->uploadPart($input);
             $this->assertTrue(strlen($output->getRequestId()) > 0);
             $etag1 = $output->getETag();
+            echo 'upload part etag1 done' . PHP_EOL;
         } finally {
             if (is_resource($file)) {
                 fclose($file);
@@ -64,7 +73,6 @@ class MultipartUploadTest extends TestCommon
 
         $parts = [];
         $parts[] = new UploadedPart($partNumber1, $etag1);
-        $partNumber2 = 2;
         $file = null;
         try {
             $file = fopen($sampleFilePath, 'r');
@@ -75,6 +83,7 @@ class MultipartUploadTest extends TestCommon
             $output = $client->uploadPart($input);
             $this->assertTrue(strlen($output->getRequestId()) > 0);
             $etag2 = $output->getETag();
+            echo 'upload part etag2 done' . PHP_EOL;
         } finally {
             if (is_resource($file)) {
                 fclose($file);
@@ -90,6 +99,7 @@ class MultipartUploadTest extends TestCommon
         $input = new CompleteMultipartUploadInput($bucket, $key, $uploadId, $parts);
         $output = $client->completeMultipartUpload($input);
         $this->assertTrue(strlen($output->getRequestId()) > 0);
+        echo 'complete parts done' . PHP_EOL;
 
         try {
             $input = new GetObjectInput($bucket, $key);
@@ -97,16 +107,59 @@ class MultipartUploadTest extends TestCommon
             $dstFilePath = $sampleFilePath . '_bak';
             $file = fopen($dstFilePath, 'w');
             Utils::copyToStream(Utils::streamFor($output->getContent()), Utils::streamFor($file));
-            $source = md5_file($sampleFilePath);
-            $fileSize = filesize($sampleFilePath);
-            $dst = md5_file($dstFilePath);
-            $this->assertEquals($source, $dst);
+            $this->assertEquals(md5_file($sampleFilePath), md5_file($dstFilePath));
+            echo 'get object to check done' . PHP_EOL;
         } finally {
-            if (file_exists($sampleFilePath)) {
-                unlink($sampleFilePath);
-            }
             if (file_exists($dstFilePath)) {
                 unlink($dstFilePath);
+            }
+            if (is_resource($file)) {
+                fclose($file);
+            }
+        }
+
+        try {
+            $key2 = self::genRandomString(3);
+            $input = new CreateMultipartUploadInput($bucket, $key2);
+            $output = $client->createMultipartUpload($input);
+            $this->assertTrue(strlen($output->getRequestId()) > 0);
+            $this->assertTrue(strlen($output->getUploadID()) > 0);
+
+            $uploadId = $output->getUploadID();
+
+            $input = new UploadPartFromFileInput($bucket, $key2, $uploadId, $partNumber1, $sampleFilePath);
+            $input->setPartSize($firstPartSize);
+            $output = $client->uploadPartFromFile($input);
+            $this->assertTrue(strlen($output->getRequestId()) > 0);
+            $etag1 = $output->getETag();
+            $parts = [];
+            $parts[] = new UploadedPart($partNumber1, $etag1);
+            echo 'upload part etag1 done' . PHP_EOL;
+
+            $input = new UploadPartFromFileInput($bucket, $key2, $uploadId, $partNumber2, $sampleFilePath);
+            $input->setOffset($firstPartSize);
+            $output = $client->uploadPartFromFile($input);
+            $this->assertTrue(strlen($output->getRequestId()) > 0);
+            $etag2 = $output->getETag();
+            $parts[] = new UploadedPart($partNumber2, $etag2);
+            echo 'upload part etag2 done' . PHP_EOL;
+
+            $input = new CompleteMultipartUploadInput($bucket, $key2, $uploadId, $parts);
+            $output = $client->completeMultipartUpload($input);
+            $this->assertTrue(strlen($output->getRequestId()) > 0);
+            echo 'complete parts done' . PHP_EOL;
+
+
+            $input = new GetObjectInput($bucket, $key2);
+            $output = $client->getObject($input);
+            $dstFilePath2 = $sampleFilePath . '_bak2';
+            $file = fopen($dstFilePath2, 'w');
+            Utils::copyToStream(Utils::streamFor($output->getContent()), Utils::streamFor($file));
+            $this->assertEquals(md5_file($sampleFilePath), md5_file($dstFilePath2));
+            echo 'get object to check done' . PHP_EOL;
+        } finally {
+            if (file_exists($dstFilePath2)) {
+                unlink($dstFilePath2);
             }
             if (is_resource($file)) {
                 fclose($file);
@@ -145,8 +198,7 @@ class MultipartUploadTest extends TestCommon
             $dstFilePath2 = $sampleFilePath . '_bak2';
             $file = fopen($dstFilePath2, 'w');
             Utils::copyToStream(Utils::streamFor($output->getContent()), Utils::streamFor($file));
-            $dst2 = md5_file($dstFilePath2);
-            $this->assertEquals($source, $dst2);
+            $this->assertEquals($source, md5_file($dstFilePath2));
         } finally {
             if (file_exists($dstFilePath2)) {
                 unlink($dstFilePath2);
@@ -157,34 +209,4 @@ class MultipartUploadTest extends TestCommon
         }
     }
 
-    private function createSampleFile($filePath)
-    {
-        if (file_exists($filePath)) {
-            return;
-        }
-        $filePath = iconv('UTF-8', 'GBK', $filePath);
-        if (is_string($filePath) && $filePath !== '') {
-            $fp = null;
-            $dir = dirname($filePath);
-            try {
-                if (!is_dir($dir)) {
-                    mkdir($dir, 0755, true);
-                }
-
-                if (($fp = fopen($filePath, 'w'))) {
-                    for ($i = 0; $i < 500000; $i++) {
-                        fwrite($fp, uniqid() . "\n");
-                        fwrite($fp, uniqid() . "\n");
-                        if ($i % 100 === 0) {
-                            fflush($fp);
-                        }
-                    }
-                }
-            } finally {
-                if ($fp) {
-                    fclose($fp);
-                }
-            }
-        }
-    }
 }
