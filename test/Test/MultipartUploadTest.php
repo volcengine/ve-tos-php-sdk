@@ -35,7 +35,7 @@ class MultipartUploadTest extends TestCommon
     {
         $client = self::getClient();
         $bucket = self::$fixedBucket;
-        $key = self::genRandomString(3);
+        $key = self::genRandomString(10);
         $input = new CreateMultipartUploadInput($bucket, $key);
         $output = $client->createMultipartUpload($input);
         $this->assertTrue(strlen($output->getRequestId()) > 0);
@@ -101,6 +101,7 @@ class MultipartUploadTest extends TestCommon
         $this->assertTrue(strlen($output->getRequestId()) > 0);
         echo 'complete parts done' . PHP_EOL;
 
+        $dstFilePath = null;
         try {
             $input = new GetObjectInput($bucket, $key);
             $output = $client->getObject($input);
@@ -110,7 +111,7 @@ class MultipartUploadTest extends TestCommon
             $this->assertEquals(md5_file($sampleFilePath), md5_file($dstFilePath));
             echo 'get object to check done' . PHP_EOL;
         } finally {
-            if (file_exists($dstFilePath)) {
+            if ($dstFilePath && file_exists($dstFilePath)) {
                 unlink($dstFilePath);
             }
             if (is_resource($file)) {
@@ -118,38 +119,37 @@ class MultipartUploadTest extends TestCommon
             }
         }
 
+        $dstFilePath2 = null;
+        $key2 = self::genRandomString(10);
+        $input = new CreateMultipartUploadInput($bucket, $key2);
+        $output = $client->createMultipartUpload($input);
+        $this->assertTrue(strlen($output->getRequestId()) > 0);
+        $this->assertTrue(strlen($output->getUploadID()) > 0);
+
+        $uploadId = $output->getUploadID();
+
+        $input = new UploadPartFromFileInput($bucket, $key2, $uploadId, $partNumber1, $sampleFilePath);
+        $input->setPartSize($firstPartSize);
+        $output = $client->uploadPartFromFile($input);
+        $this->assertTrue(strlen($output->getRequestId()) > 0);
+        $etag1 = $output->getETag();
+        $parts = [];
+        $parts[] = new UploadedPart($partNumber1, $etag1);
+        echo 'upload part etag1 done' . PHP_EOL;
+
+        $input = new UploadPartFromFileInput($bucket, $key2, $uploadId, $partNumber2, $sampleFilePath);
+        $input->setOffset($firstPartSize);
+        $output = $client->uploadPartFromFile($input);
+        $this->assertTrue(strlen($output->getRequestId()) > 0);
+        $etag2 = $output->getETag();
+        $parts[] = new UploadedPart($partNumber2, $etag2);
+        echo 'upload part etag2 done' . PHP_EOL;
+
+        $input = new CompleteMultipartUploadInput($bucket, $key2, $uploadId, $parts);
+        $output = $client->completeMultipartUpload($input);
+        $this->assertTrue(strlen($output->getRequestId()) > 0);
+        echo 'complete parts done' . PHP_EOL;
         try {
-            $key2 = self::genRandomString(3);
-            $input = new CreateMultipartUploadInput($bucket, $key2);
-            $output = $client->createMultipartUpload($input);
-            $this->assertTrue(strlen($output->getRequestId()) > 0);
-            $this->assertTrue(strlen($output->getUploadID()) > 0);
-
-            $uploadId = $output->getUploadID();
-
-            $input = new UploadPartFromFileInput($bucket, $key2, $uploadId, $partNumber1, $sampleFilePath);
-            $input->setPartSize($firstPartSize);
-            $output = $client->uploadPartFromFile($input);
-            $this->assertTrue(strlen($output->getRequestId()) > 0);
-            $etag1 = $output->getETag();
-            $parts = [];
-            $parts[] = new UploadedPart($partNumber1, $etag1);
-            echo 'upload part etag1 done' . PHP_EOL;
-
-            $input = new UploadPartFromFileInput($bucket, $key2, $uploadId, $partNumber2, $sampleFilePath);
-            $input->setOffset($firstPartSize);
-            $output = $client->uploadPartFromFile($input);
-            $this->assertTrue(strlen($output->getRequestId()) > 0);
-            $etag2 = $output->getETag();
-            $parts[] = new UploadedPart($partNumber2, $etag2);
-            echo 'upload part etag2 done' . PHP_EOL;
-
-            $input = new CompleteMultipartUploadInput($bucket, $key2, $uploadId, $parts);
-            $output = $client->completeMultipartUpload($input);
-            $this->assertTrue(strlen($output->getRequestId()) > 0);
-            echo 'complete parts done' . PHP_EOL;
-
-
             $input = new GetObjectInput($bucket, $key2);
             $output = $client->getObject($input);
             $dstFilePath2 = $sampleFilePath . '_bak2';
@@ -158,7 +158,7 @@ class MultipartUploadTest extends TestCommon
             $this->assertEquals(md5_file($sampleFilePath), md5_file($dstFilePath2));
             echo 'get object to check done' . PHP_EOL;
         } finally {
-            if (file_exists($dstFilePath2)) {
+            if ($dstFilePath2 && file_exists($dstFilePath2)) {
                 unlink($dstFilePath2);
             }
             if (is_resource($file)) {
@@ -166,7 +166,7 @@ class MultipartUploadTest extends TestCommon
             }
         }
 
-        $key2 = self::genRandomString(3);
+        $key2 = self::genRandomString(10);
         $input = new CreateMultipartUploadInput($bucket, $key2);
         $output = $client->createMultipartUpload($input);
         $this->assertTrue(strlen($output->getRequestId()) > 0);
@@ -200,7 +200,7 @@ class MultipartUploadTest extends TestCommon
             Utils::copyToStream(Utils::streamFor($output->getContent()), Utils::streamFor($file));
             $this->assertEquals($source, md5_file($dstFilePath2));
         } finally {
-            if (file_exists($dstFilePath2)) {
+            if ($dstFilePath2 && file_exists($dstFilePath2)) {
                 unlink($dstFilePath2);
             }
             if (is_resource($file)) {
