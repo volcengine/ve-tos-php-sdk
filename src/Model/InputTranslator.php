@@ -265,7 +265,7 @@ trait InputTranslator
                 }
                 $filePath .= DIRECTORY_SEPARATOR . $key;
             }
-        } else if ($filePath[strlen($filePath) - 1] === DIRECTORY_SEPARATOR) {
+        } else if ($filePath[strlen($filePath) - 1] === '/' || $filePath[strlen($filePath) - 1] === DIRECTORY_SEPARATOR) {
             mkdir($filePath, 0755, true);
             if ($key[strlen($key) - 1] === '/') {
                 // mkdir
