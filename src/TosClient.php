@@ -228,9 +228,8 @@ class TosClient
 
     /**
      * @param HttpRequest $request
-     * @param bool $streamFlag
+     * @param bool $stream
      * @return ResponseInterface
-     * @throws GuzzleException
      */
     private function &doRequest(HttpRequest &$request, $stream = false)
     {

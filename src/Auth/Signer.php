@@ -74,7 +74,7 @@ trait Signer
 
     private static function getStringToSign($canonicalRequest, $longDate, $credentialScope)
     {
-        $stringToSign = self::$algorithm . PHP_EOL . $longDate . PHP_EOL . $credentialScope . PHP_EOL;
+        $stringToSign = self::$algorithm . "\n" . $longDate . "\n" . $credentialScope . "\n";
         $stringToSign .= hash('sha256', $canonicalRequest);
         return $stringToSign;
     }
@@ -91,7 +91,7 @@ trait Signer
             }
             $signedHeader[$key] = $val;
             $signedHeaders .= $lowerKey . ';';
-            $canonicalHeaders .= $lowerKey . ':' . trim(strval($val)) . PHP_EOL;
+            $canonicalHeaders .= $lowerKey . ':' . trim(strval($val)) . "\n";
         }
         $signedHeaders = substr($signedHeaders, 0, strlen($signedHeaders) - 1);
         return $canonicalHeaders;
@@ -99,12 +99,12 @@ trait Signer
 
     private static function getCanonicalRequest(HttpRequest &$request, $canonicalHeaders = '', &$signedHeaders = '', $query = false)
     {
-        $canonicalRequest = strtoupper($request->method) . PHP_EOL;
+        $canonicalRequest = strtoupper($request->method) . "\n";
         $canonicalRequest .= '/';
         if ($request->key) {
             $canonicalRequest .= Helper::urlencodeWithSafe($request->key);
         }
-        $canonicalRequest .= PHP_EOL;
+        $canonicalRequest .= "\n";
 
         if (is_array($request->queries)) {
             ksort($request->queries);
@@ -120,11 +120,11 @@ trait Signer
                 $index++;
             }
         }
-        $canonicalRequest .= PHP_EOL;
+        $canonicalRequest .= "\n";
 
         if ($canonicalHeaders && $signedHeaders) {
             $canonicalRequest .= $canonicalHeaders;
-            $canonicalRequest .= PHP_EOL;
+            $canonicalRequest .= "\n";
         } else {
             $signedHeaders = '';
             ksort($request->headers);
@@ -136,14 +136,14 @@ trait Signer
                 }
 
                 $signedHeaders .= $lowerKey . ';';
-                $canonicalRequest .= $lowerKey . ':' . trim(strval($val)) . PHP_EOL;
+                $canonicalRequest .= $lowerKey . ':' . trim(strval($val)) . "\n";
             }
-            $canonicalRequest .= PHP_EOL;
+            $canonicalRequest .= "\n";
             $signedHeaders = substr($signedHeaders, 0, strlen($signedHeaders) - 1);
         }
 
         $canonicalRequest .= $signedHeaders;
-        $canonicalRequest .= PHP_EOL;
+        $canonicalRequest .= "\n";
 
         if ($query) {
             $canonicalRequest .= self::$unsignedPayload;
