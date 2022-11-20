@@ -184,9 +184,9 @@ class TosClient
             $closeBody = false;
             try {
                 if ($method === 'GetObjectToFile') {
-                    list($request, $filePath, $doMkdir) = $transFn($input);
+                    list($request, $filePath, $doMkdir, $bucket, $key) = $transFn($input);
                     $response = $this->doRequest($request, !$doMkdir && $input->isStreamMode());
-                    return $parseFn($response, $filePath, $doMkdir);
+                    return $parseFn($response, $filePath, $doMkdir, $bucket, $key);
                 }
 
                 $request = $transFn($input);
