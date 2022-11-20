@@ -274,10 +274,11 @@ trait InputTranslator
             $filePath .= $key;
         }
 
+        $bucket = self::checkBucket($input->getBucket());
         if ($doMkdir) {
-            $result = [self::transHeadObjectInput($input), $filePath, $doMkdir];
+            $result = [self::transHeadObjectInput($input), $filePath, $doMkdir, $bucket, $key];
         } else {
-            $result = [self::transGetObjectInput($input), $filePath, $doMkdir];
+            $result = [self::transGetObjectInput($input), $filePath, $doMkdir, $bucket, $key];
         }
         return $result;
     }

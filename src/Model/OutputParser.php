@@ -126,7 +126,7 @@ trait OutputParser
         return $output;
     }
 
-    protected static function &parseGetObjectToFileOutput(ResponseInterface &$response, $filePath, $doMkdir)
+    protected static function &parseGetObjectToFileOutput(ResponseInterface &$response, $filePath, $doMkdir, $bucket, $key)
     {
         $requestInfo = self::getRequestInfo($response);
         $content = self::checkResponse($response, $requestInfo, false);
@@ -139,7 +139,7 @@ trait OutputParser
             $file = null;
             $tempFilePath = null;
             try {
-                $tempFilePath = $filePath . '_' . uniqid();
+                $tempFilePath = $filePath . '.' . base64_encode(md5($bucket . '.' . $key)) . '.download';
                 $file = fopen($tempFilePath, 'w');
                 Utils::copyToStream(Utils::streamFor($content), Utils::streamFor($file));
                 if (is_resource($file)) {
