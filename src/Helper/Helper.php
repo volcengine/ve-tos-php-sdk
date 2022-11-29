@@ -23,6 +23,10 @@ class Helper
 {
     public static function urlencodeWithSafe($val, $safe = '/')
     {
+        if (!$val) {
+            return '';
+        }
+
         if (($len = strlen($val)) === 0) {
             return '';
         }

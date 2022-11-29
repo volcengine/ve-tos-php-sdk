@@ -138,7 +138,7 @@ class TosClient
     /**
      * @param array|ConfigParser|string $configOrRegion
      */
-    public function __construct($configOrRegion, $ak = '', $sk = '', $endpoint = '')
+    public function __construct($configOrRegion = 'cn-beijing', $ak = '', $sk = '', $endpoint = '')
     {
         if (is_array($configOrRegion)) {
             $this->cp = new ConfigParser($configOrRegion);
@@ -177,19 +177,19 @@ class TosClient
         } else {
             $input = $args[0];
         }
-        $transFn = __CLASS__ . '::trans' . $method . 'Input';
-        $parseFn = __CLASS__ . '::parse' . $method . 'Output';
-        if (is_callable($transFn) && is_callable($parseFn)) {
+        $transFn = 'trans' . $method . 'Input';
+        $parseFn = 'parse' . $method . 'Output';
+        if (is_callable(__CLASS__ . '::' . $transFn) && is_callable(__CLASS__ . '::' . $parseFn)) {
             $body = null;
             $closeBody = false;
             try {
                 if ($method === 'GetObjectToFile') {
-                    list($request, $filePath, $doMkdir, $bucket, $key) = $transFn($input);
+                    list($request, $filePath, $doMkdir, $bucket, $key) = self::$transFn($input);
                     $response = $this->doRequest($request, !$doMkdir && $input->isStreamMode());
-                    return $parseFn($response, $filePath, $doMkdir, $bucket, $key);
+                    return self::$parseFn($response, $filePath, $doMkdir, $bucket, $key);
                 }
 
-                $request = $transFn($input);
+                $request = self::$transFn($input);
                 if ($method === 'PutObjectFromFile' || $method === 'UploadPartFromFile') {
                     $closeBody = true;
                 } else if ($method === 'PutObject' || $method === 'AppendObject' || $method === 'UploadPart') {
@@ -200,9 +200,9 @@ class TosClient
                 $body = $request->body;
                 $response = $this->doRequest($request, $method === 'GetObject' && $input->isStreamMode());
                 if ($method === 'UploadPart' || $method === 'UploadPartCopy' || $method == 'UploadPartFromFile') {
-                    return $parseFn($response, $input->getPartNumber());
+                    return self::$parseFn($response, $input->getPartNumber());
                 }
-                return $parseFn($response);
+                return self::$parseFn($response);
             } catch (TosClientException $ex) {
                 throw $ex;
             } catch (TosServerException $ex) {
