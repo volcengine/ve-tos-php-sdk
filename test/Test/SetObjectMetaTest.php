@@ -71,6 +71,15 @@ class SetObjectMetaTest extends TestCommon
         $this->assertEquals($output->getMeta()['aaa'], 'bbb');
         $this->assertEquals($output->getMeta()['中文键'], '中文值');
 
+        $input = new GetObjectInput($bucket, $key);
+        $input->setResponseContentDisposition('attachment; filename="中文.txt"');
+        $output = $client->getObject($input);
+        $this->assertTrue(strlen($output->getRequestId()) > 0);
+        $this->assertEquals($output->getContent()->getContents(), $data);
+        $output->getContent()->close();
+        $this->assertEquals($input->getResponseContentDisposition(), $output->getContentDisposition());
+        echo $output->getContentDisposition() . PHP_EOL;
+
         $input = new SetObjectMetaInput($bucket, $key);
         $input->setContentDisposition('test-disposition-new');
         $expires = time() + 7200;
