@@ -218,11 +218,16 @@ trait Uploader
     private function &concurrentUploadPart($uploadId, $filePath, $partSize, $taskNum, UploadFileInput &$input, $checkpointFile, array &$checkpointContent)
     {
         $fileSize = filesize($filePath);
-        $partCount = intval($fileSize / $partSize);
-        if (($lastPartSize = $fileSize % $partSize) !== 0) {
-            $partCount++;
+        if ($fileSize === 0) {
+            $partCount = 1;
+            $lastPartSize = 0;
         } else {
-            $lastPartSize = $partSize;
+            $partCount = intval($fileSize / $partSize);
+            if (($lastPartSize = $fileSize % $partSize) !== 0) {
+                $partCount++;
+            } else {
+                $lastPartSize = $partSize;
+            }
         }
 
         $inputs = [];
