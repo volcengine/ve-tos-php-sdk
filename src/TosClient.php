@@ -186,7 +186,13 @@ class TosClient
                 if ($method === 'GetObjectToFile') {
                     list($request, $filePath, $doMkdir, $bucket, $key) = self::$transFn($input);
                     $response = $this->doRequest($request, !$doMkdir && $input->isStreamMode());
-                    return self::$parseFn($response, $filePath, $doMkdir, $bucket, $key);
+                    return self::$parseFn($response, $filePath, $doMkdir, $bucket, $key, $input->isStreamMode());
+                }
+
+                if ($method === 'GetObject') {
+                    $request = self::$transFn($input);
+                    $response = $this->doRequest($request, $input->isStreamMode());
+                    return self::$parseFn($response, $input->isStreamMode());
                 }
 
                 $request = self::$transFn($input);
@@ -198,10 +204,11 @@ class TosClient
                     }
                 }
                 $body = $request->body;
-                $response = $this->doRequest($request, $method === 'GetObject' && $input->isStreamMode());
+                $response = $this->doRequest($request);
                 if ($method === 'UploadPart' || $method === 'UploadPartCopy' || $method == 'UploadPartFromFile') {
                     return self::$parseFn($response, $input->getPartNumber());
                 }
+
                 return self::$parseFn($response);
             } catch (TosClientException $ex) {
                 throw $ex;
