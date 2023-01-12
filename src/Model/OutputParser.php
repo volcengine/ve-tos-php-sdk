@@ -108,10 +108,10 @@ trait OutputParser
         return $output;
     }
 
-    protected static function &parseGetObjectOutput(ResponseInterface &$response)
+    protected static function &parseGetObjectOutput(ResponseInterface &$response, $stream = false)
     {
         $requestInfo = self::getRequestInfo($response);
-        $content = self::checkResponse($response, $requestInfo, false);
+        $content = self::checkResponse($response, $requestInfo, $stream);
         $content = new StreamReader($content, intval(self::getHeaderLine($response, Constant::HeaderContentLength)));
         $output = new GetObjectOutput($requestInfo, self::getHeaderLine($response, Constant::HeaderContentRange),
             self::getHeaderLine($response, Constant::HeaderETag), self::transRFC1123TimeInHeader($response, Constant::HeaderLastModified),
@@ -126,10 +126,10 @@ trait OutputParser
         return $output;
     }
 
-    protected static function &parseGetObjectToFileOutput(ResponseInterface &$response, $filePath, $doMkdir, $bucket, $key)
+    protected static function &parseGetObjectToFileOutput(ResponseInterface &$response, $filePath, $doMkdir, $bucket, $key, $stream = false)
     {
         $requestInfo = self::getRequestInfo($response);
-        $content = self::checkResponse($response, $requestInfo, false);
+        $content = self::checkResponse($response, $requestInfo, $stream);
         $content = new StreamReader($content, intval(self::getHeaderLine($response, Constant::HeaderContentLength)));
         if ($doMkdir) {
             if (!is_dir($filePath)) {
@@ -482,9 +482,12 @@ trait OutputParser
      * @param bool $parseContents
      * @return mixed
      */
-    protected static function checkResponse(ResponseInterface &$response, RequestInfo &$requestInfo, $parseContents = true)
+    protected static function checkResponse(ResponseInterface &$response, RequestInfo &$requestInfo, $stream = false)
     {
         $body = $response->getBody();
+        if ($stream) {
+            $body = new StreamReader($body, intval(self::getHeaderLine($response, Constant::HeaderContentLength)));
+        }
         if ($requestInfo->getStatusCode() >= 300) {
             if (($contents = self::readContents($body, $requestInfo)) && ($error = json_decode($contents, true))) {
 //                echo $error['canonical_request'] . PHP_EOL;
@@ -498,7 +501,7 @@ trait OutputParser
         }
 
 
-        if ($parseContents) {
+        if (!$stream) {
             if ($contents = self::readContents($body, $requestInfo)) {
                 $result = json_decode($contents, true);
                 if (json_last_error() !== 0) {
