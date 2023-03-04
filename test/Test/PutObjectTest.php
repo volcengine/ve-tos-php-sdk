@@ -47,6 +47,7 @@ class PutObjectTest extends TestCommon
             $output = $client->putObject(new PutObjectInput($bucket, $testKey, $data));
             $this->assertTrue(strlen($output->getRequestId()) > 0);
             $this->assertTrue(strlen($output->getETag()) > 0);
+            $this->assertEquals(200, $output->getStatusCode());
 
             $output = $client->getObject(new GetObjectInput($bucket, $testKey));
             $this->assertTrue(strlen($output->getRequestId()) > 0);

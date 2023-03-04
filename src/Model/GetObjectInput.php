@@ -434,5 +434,5 @@ class GetObjectInput
     {
         $this->streamMode = $streamMode;
     }
-    
+
 }

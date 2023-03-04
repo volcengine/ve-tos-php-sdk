@@ -111,7 +111,7 @@ trait OutputParser
     protected static function &parseGetObjectOutput(ResponseInterface &$response, $stream = false)
     {
         $requestInfo = self::getRequestInfo($response);
-        $content = self::checkResponse($response, $requestInfo, $stream);
+        $content = self::checkResponse($response, $requestInfo, $stream, false);
         $content = new StreamReader($content, intval(self::getHeaderLine($response, Constant::HeaderContentLength)));
         $output = new GetObjectOutput($requestInfo, self::getHeaderLine($response, Constant::HeaderContentRange),
             self::getHeaderLine($response, Constant::HeaderETag), self::transRFC1123TimeInHeader($response, Constant::HeaderLastModified),
@@ -129,7 +129,7 @@ trait OutputParser
     protected static function &parseGetObjectToFileOutput(ResponseInterface &$response, $filePath, $doMkdir, $bucket, $key, $stream = false)
     {
         $requestInfo = self::getRequestInfo($response);
-        $content = self::checkResponse($response, $requestInfo, $stream);
+        $content = self::checkResponse($response, $requestInfo, $stream, false);
         $content = new StreamReader($content, intval(self::getHeaderLine($response, Constant::HeaderContentLength)));
         if ($doMkdir) {
             if (!is_dir($filePath)) {
@@ -482,7 +482,7 @@ trait OutputParser
      * @param bool $parseContents
      * @return mixed
      */
-    protected static function checkResponse(ResponseInterface &$response, RequestInfo &$requestInfo, $stream = false)
+    protected static function checkResponse(ResponseInterface &$response, RequestInfo &$requestInfo, $stream = false, $parseContents = true)
     {
         $body = $response->getBody();
         if ($stream) {
@@ -501,7 +501,7 @@ trait OutputParser
         }
 
 
-        if (!$stream) {
+        if ($parseContents) {
             if ($contents = self::readContents($body, $requestInfo)) {
                 $result = json_decode($contents, true);
                 if (json_last_error() !== 0) {
