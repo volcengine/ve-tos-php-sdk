@@ -651,7 +651,7 @@ trait InputTranslator
         return $request;
     }
 
-    protected static function transCompleteMultipartUploadInput(CompleteMultipartUploadInput &$input)
+    protected static function &transCompleteMultipartUploadInput(CompleteMultipartUploadInput &$input)
     {
         $bucket = self::checkBucket($input->getBucket());
         $key = self::checkKey($input->getKey());
@@ -669,10 +669,6 @@ trait InputTranslator
             }
             return $a['PartNumber'] > $b['PartNumber'] ? 1 : -1;
         });
-
-        if (!isset($body['Parts'][0])) {
-            throw new TosClientException('invalid parts');
-        }
 
         $contents = json_encode($body);
         if (!$contents || json_last_error() !== 0) {
@@ -1038,7 +1034,6 @@ trait InputTranslator
 
     protected static function checkKey($key)
     {
-        $key = trim($key);
         $length = strlen($key);
         if ($length < 1 || $length > 696) {
             throw new TosClientException('invalid object name, the length must be [1, 696]');
@@ -1055,17 +1050,19 @@ trait InputTranslator
         return $key;
     }
 
-    protected static function transGranteeToArray(Grantee &$grantee)
+    protected static function &transGranteeToArray(Grantee &$grantee)
     {
         switch ($type = $grantee->getType()) {
             case Enum::GranteeGroup:
                 self::checkCanned($canned = $grantee->getCanned());
-                return ['Type' => $type, 'Canned' => $canned];
+                $result = ['Type' => $type, 'Canned' => $canned];
+                return $result;
             case Enum::GranteeUser:
                 if (!$id = $grantee->getID()) {
                     throw new TosClientException('empty grantee id');
                 }
-                return ['Type' => $type, 'ID' => strval($id)];
+                $result = ['Type' => $type, 'ID' => strval($id)];
+                return $result;
             default:
                 throw new TosClientException('invalid grantee type');
         }

@@ -36,6 +36,7 @@ class PutObjectTest extends TestCommon
         $data = 'hello world';
 
         $testKeys = [];
+        $testKeys[] = '  ';
         $testKeys[] = 'a';
         $testKeys[] = '仅包含中文';
         $testKeys[] = 'にほんご';
