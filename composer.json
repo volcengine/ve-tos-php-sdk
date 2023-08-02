@@ -1,7 +1,8 @@
 {
   "name": "volcengine/ve-tos-php-sdk",
   "description": "PHP SDK for volcengine TOS",
-  "license": "Apache-2.0",
+  "license": "Apache 2.0",
+  "version": "2.1.0",
   "type": "library",
   "authors": [
     {

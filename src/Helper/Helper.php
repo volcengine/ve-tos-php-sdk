@@ -70,7 +70,12 @@ class Helper
             $domain = $endpoint;
         }
 
-        if (filter_var($domain, FILTER_VALIDATE_IP)) {
+        $host = $domain;
+        if (($idx = strpos($domain, ':')) >= 0) {
+            $host = substr($domain, 0, $idx);
+        }
+
+        if (filter_var($host, FILTER_VALIDATE_IP)) {
             throw new TosClientException('ip address is not supported');
         }
         $result = ['domain' => $domain, 'schema' => $schema];

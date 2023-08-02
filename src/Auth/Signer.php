@@ -34,22 +34,22 @@ trait Signer
         }
 
         $request->headers[Constant::HeaderHost] = $host;
-        if (!$ak || !$sk) {
-            return;
-        }
 
         $longDate = null;
         $shortDate = null;
         $credentialScope = null;
         self::prepareDateAndCredentialScope($longDate, $shortDate, $credentialScope, $region);
 
-        if ($securityToken) {
+        if ($ak && $sk && $securityToken) {
             $request->headers[Constant::HeaderSecurityToken] = strval($securityToken);
         }
         $request->headers[Constant::HeaderRequestDate] = $longDate;
         $signedHeaders = null;
         $canonicalRequest = self::getCanonicalRequest($request, '', $signedHeaders);
 
+        if (!$ak || !$sk) {
+            return;
+        }
         $stringToSign = self::getStringToSign($canonicalRequest, $longDate, $credentialScope);
         $signature = self::getSignature($stringToSign, $shortDate, $sk, $region);
         $request->headers[Constant::HeaderAuthorization] = self::$algorithm .
@@ -110,10 +110,10 @@ trait Signer
             ksort($request->queries);
             $index = 0;
             foreach ($request->queries as $key => $val) {
-                $key = rawurlencode($key);
+                $encodedKey = rawurlencode($key);
                 $val = rawurlencode(strval($val));
                 $request->queries[$key] = $val;
-                $canonicalRequest .= $key . '=' . $val;
+                $canonicalRequest .= $encodedKey . '=' . $val;
                 if ($index !== count($request->queries) - 1) {
                     $canonicalRequest .= '&';
                 }

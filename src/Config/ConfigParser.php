@@ -33,7 +33,7 @@ class ConfigParser
     /**
      * @var string
      */
-    private $version = '2.1.5';
+    private $version = '2.1.6';
 
     /**
      * @var string
