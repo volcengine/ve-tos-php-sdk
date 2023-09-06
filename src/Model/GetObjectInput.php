@@ -95,7 +95,10 @@ class GetObjectInput
      * @var string
      */
     private $range;
-
+    /**
+     * @var string
+     */
+    private $process;
     /**
      * @var bool
      */
@@ -417,6 +420,22 @@ class GetObjectInput
     public function setRange($range)
     {
         $this->range = $range;
+    }
+
+    /**
+     * @return string
+     */
+    public function getProcess()
+    {
+        return $this->process;
+    }
+
+    /**
+     * @param string $process
+     */
+    public function setProcess($process)
+    {
+        $this->process = $process;
     }
 
     /**

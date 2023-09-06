@@ -84,6 +84,7 @@ class Constant
     const HeaderLastModified = 'Last-Modified';
     const HeaderRange = 'Range';
 
+    const QueryPrefix = Constant::HeaderPrefix;
     const QueryVersionId = 'versionId';
     const QueryPartNumber = 'partNumber';
     const QueryResponseCacheControl = 'response-cache-control';
@@ -92,4 +93,6 @@ class Constant
     const QueryResponseContentLanguage = 'response-content-language';
     const QueryResponseContentType = 'response-content-type';
     const QueryResponseExpires = 'response-expires';
+
+    const QueryProcess = Constant::QueryPrefix . 'process';
 }

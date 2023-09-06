@@ -233,6 +233,10 @@ trait InputTranslator
             $queries[Constant::QueryResponseExpires] = gmdate('D, d M Y H:i:s \G\M\T', $responseExpires);
         }
 
+        if ($process = $input->getProcess()) {
+            $queries[Constant::QueryProcess] = $process;
+        }
+
         $request = new HttpRequest();
         $request->operation = 'getObject';
         $request->method = Enum::HttpMethodGet;
