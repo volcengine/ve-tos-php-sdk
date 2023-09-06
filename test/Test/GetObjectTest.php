@@ -20,6 +20,7 @@ namespace Tos\Test;
 use Tos\Exception\TosServerException;
 use Tos\Model\DeleteObjectInput;
 use Tos\Model\GetObjectInput;
+use Tos\Model\PutObjectFromFileInput;
 use Tos\Model\PutObjectInput;
 
 require_once 'TestCommon.php';
@@ -40,6 +41,22 @@ class GetObjectTest extends TestCommon
         $output = $client->getObject(new GetObjectInput($bucket, $key));
         $this->assertTrue(strlen($output->getRequestId()) > 0);
         $this->assertEquals($output->getContent()->getContents(), $data);
+        $output->getContent()->close();
+
+        $output = $client->putObjectFromFile(new PutObjectFromFileInput($bucket, $key, __DIR__ . '/1.jpg'));
+        $this->assertTrue(strlen($output->getRequestId()) > 0);
+        $this->assertTrue(strlen($output->getETag()) > 0);
+
+        $input = new GetObjectInput($bucket, $key);
+        $input->setProcess('image/info');
+        $output = $client->getObject($input);
+        $this->assertTrue(strlen($output->getRequestId()) > 0);
+        $error = json_decode($output->getContent()->getContents(), true);
+        $this->assertTrue(isset($error['FileSize']));
+        $this->assertTrue(isset($error['Format']));
+        $this->assertTrue(isset($error['ImageHeight']));
+        $this->assertTrue(isset($error['ImageWidth']));
+
         $output->getContent()->close();
     }
 
