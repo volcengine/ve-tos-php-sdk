@@ -100,6 +100,14 @@ class GetObjectInput
      */
     private $process;
     /**
+     * @var string
+     */
+    private $saveBucket;
+    /**
+     * @var string
+     */
+    private $saveObject;
+    /**
      * @var bool
      */
     private $streamMode = true;
@@ -436,6 +444,38 @@ class GetObjectInput
     public function setProcess($process)
     {
         $this->process = $process;
+    }
+
+    /**
+     * @return string
+     */
+    public function getSaveBucket()
+    {
+        return $this->saveBucket;
+    }
+
+    /**
+     * @param string $saveBucket
+     */
+    public function setSaveBucket($saveBucket)
+    {
+        $this->saveBucket = $saveBucket;
+    }
+
+    /**
+     * @return string
+     */
+    public function getSaveObject()
+    {
+        return $this->saveObject;
+    }
+
+    /**
+     * @param string $saveObject
+     */
+    public function setSaveObject($saveObject)
+    {
+        $this->saveObject = $saveObject;
     }
 
     /**
