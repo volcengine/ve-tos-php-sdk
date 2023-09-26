@@ -237,6 +237,14 @@ trait InputTranslator
             $queries[Constant::QueryProcess] = $process;
         }
 
+        if ($saveBucket = $input->getSaveBucket()) {
+            $queries[Constant::QuerySaveBucket] = $saveBucket;
+        }
+
+        if ($saveObject = $input->getSaveObject()) {
+            $queries[Constant::QuerySaveObject] = $saveObject;
+        }
+
         $request = new HttpRequest();
         $request->operation = 'getObject';
         $request->method = Enum::HttpMethodGet;

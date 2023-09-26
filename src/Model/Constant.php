@@ -95,4 +95,7 @@ class Constant
     const QueryResponseExpires = 'response-expires';
 
     const QueryProcess = Constant::QueryPrefix . 'process';
+    const QuerySaveBucket = Constant::QueryPrefix . 'save-bucket';
+
+    const QuerySaveObject = Constant::QueryPrefix . 'save-object';
 }
