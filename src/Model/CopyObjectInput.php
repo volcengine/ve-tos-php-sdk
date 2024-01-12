@@ -144,6 +144,14 @@ class CopyObjectInput
      * @var string
      */
     private $storageClass;
+    /**
+     * @var string
+     */
+    private $tagging;
+    /**
+     * @var string
+     */
+    private $taggingDirective;
 
     /**
      * @param string $bucket
@@ -657,4 +665,35 @@ class CopyObjectInput
         $this->storageClass = $storageClass;
     }
 
+    /**
+     * @return string
+     */
+    public function getTagging()
+    {
+        return $this->tagging;
+    }
+
+    /**
+     * @param string $tagging
+     */
+    public function setTagging($tagging)
+    {
+        $this->tagging = $tagging;
+    }
+
+    /**
+     * @return string
+     */
+    public function getTaggingDirective()
+    {
+        return $this->taggingDirective;
+    }
+
+    /**
+     * @param string $taggingDirective
+     */
+    public function setTaggingDirective($taggingDirective)
+    {
+        $this->taggingDirective = $taggingDirective;
+    }
 }

@@ -476,6 +476,38 @@ trait OutputParser
         return $output;
     }
 
+    protected static function &parsePutObjectTaggingOutput(ResponseInterface &$response)
+    {
+        $requestInfo = self::getRequestInfo($response);
+        self::checkResponse($response, $requestInfo);
+        $output = new PutObjectTaggingOutput($requestInfo, self::getHeaderLine($response, Constant::HeaderVersionId));
+        return $output;
+    }
+
+    protected static function &parseGetObjectTaggingOutput(ResponseInterface &$response)
+    {
+        $requestInfo = self::getRequestInfo($response);
+        $result = self::checkResponse($response, $requestInfo);
+        $tags = [];
+        if (isset($result['TagSet']) && isset($result['TagSet']['Tags']) && is_array($result['TagSet']['Tags'])) {
+            foreach ($result['TagSet']['Tags'] as $item) {
+                $tags[] = new Tag(isset($item['Key']) ? strval($item['Key']) : '',
+                    isset($item['Value']) ? strval($item['Value']) : '');
+            }
+        }
+
+        $output = new GetObjectTaggingOutput($requestInfo, self::getHeaderLine($response, Constant::HeaderVersionId), new TagSet($tags));
+        return $output;
+    }
+
+    protected static function &parseDeleteObjectTaggingOutput(ResponseInterface &$response)
+    {
+        $requestInfo = self::getRequestInfo($response);
+        self::checkResponse($response, $requestInfo);
+        $output = new DeleteObjectTaggingOutput($requestInfo, self::getHeaderLine($response, Constant::HeaderVersionId));
+        return $output;
+    }
+
     /**
      * @param ResponseInterface &$response
      * @param RequestInfo $requestInfo

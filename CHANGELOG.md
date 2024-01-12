@@ -1,5 +1,15 @@
 # ChangeLog of TOS SDK for PHP
 
+## 版本号：v2.1.9 日期：2024-01-15
+
+### 变更内容
+
+- 支持对象标签管理接口
+    - PutObjectTagging
+    - GetObjectTagging
+    - DeleteObjectTagging
+- 客户端初始化参数新增 AutoRecognizeContentType
+
 ## 版本号：v2.1.8 日期：2023-09-26
 
 ### 变更内容

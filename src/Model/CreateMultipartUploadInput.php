@@ -103,6 +103,10 @@ class CreateMultipartUploadInput
      * @var string
      */
     private $storageClass;
+    /**
+     * @var string
+     */
+    private $tagging;
 
     /**
      * @param string $bucket
@@ -448,5 +452,21 @@ class CreateMultipartUploadInput
     public function setStorageClass($storageClass)
     {
         $this->storageClass = $storageClass;
+    }
+
+    /**
+     * @return string
+     */
+    public function getTagging()
+    {
+        return $this->tagging;
+    }
+
+    /**
+     * @param string $tagging
+     */
+    public function setTagging($tagging)
+    {
+        $this->tagging = $tagging;
     }
 }

@@ -58,7 +58,9 @@ class Constant
     const HeaderCopySource = Constant::HeaderPrefix . 'copy-source';
     const HeaderCopySourceRange = Constant::HeaderPrefix . 'copy-source-range';
     const HeaderMetadataDirective = Constant::HeaderPrefix . 'metadata-directive';
+    const HeaderTagging = Constant::HeaderPrefix . 'tagging';
 
+    const HeaderTaggingDirective = Constant::HeaderPrefix . 'tagging-directive';
     const HeaderUserAgent = 'User-Agent';
     const HeaderConnection = 'Connection';
     const HeaderContentLength = 'Content-Length';

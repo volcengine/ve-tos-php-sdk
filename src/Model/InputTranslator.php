@@ -98,6 +98,7 @@ trait InputTranslator
         self::dealAcl($input, $headers, false);
         self::dealMeta($input, $headers);
         self::dealScAndWrl($input, $headers);
+        self::dealTagging($input, $headers, true);
 
         $request = new HttpRequest();
         $request->operation = 'copyObject';
@@ -125,6 +126,7 @@ trait InputTranslator
         self::dealAcl($input, $headers, false);
         self::dealMeta($input, $headers);
         self::dealScAndWrl($input, $headers);
+        self::dealTagging($input, $headers);
 
         $request = new HttpRequest();
         $request->operation = 'putObject';
@@ -170,6 +172,7 @@ trait InputTranslator
         self::dealAcl($input, $headers, false);
         self::dealMeta($input, $headers);
         self::dealScAndWrl($input, $headers);
+        self::dealTagging($input, $headers);
 
         $request = new HttpRequest();
         $request->operation = 'putObjectFromFile';
@@ -551,6 +554,7 @@ trait InputTranslator
         self::dealSse($input, $headers);
         self::dealMeta($input, $headers);
         self::dealScAndWrl($input, $headers);
+        self::dealTagging($input, $headers);
 
         $queries = ['uploads' => ''];
         self::dealEncodingType($input, $queries);
@@ -799,6 +803,78 @@ trait InputTranslator
         return $request;
     }
 
+    protected static function &transPutObjectTaggingInput(PutObjectTaggingInput &$input)
+    {
+        $bucket = self::checkBucket($input->getBucket());
+        $key = self::checkKey($input->getKey());
+
+        $queries = ['tagging' => ''];
+        if ($versionId = $input->getVersionID()) {
+            $queries[Constant::QueryVersionId] = $versionId;
+        }
+
+        $tagSet = $input->getTagSet();
+
+        if (!$tagSet || !($tags = $tagSet->getTags()) || !is_array($tags) || count($tags) === 0) {
+            throw new TosClientException('empty tags');
+        }
+
+        $tagSet = [];
+        foreach ($tags as $tag) {
+            $tagSet['Tags'] [] = ['Key' => $tag->getKey(), 'Value' => $tag->getValue()];
+        }
+        $body = [];
+        $body['TagSet'] = $tagSet;
+
+        $contents = json_encode($body);
+        if (!$contents || json_last_error() !== 0) {
+            throw new TosClientException(sprintf('unable to do serialization/deserialization, %s', json_last_error_msg()));
+        }
+
+        $request = new HttpRequest();
+        $request->body = $contents;
+        $request->operation = 'putObjectTagging';
+        $request->method = Enum::HttpMethodPut;
+        $request->bucket = $bucket;
+        $request->key = $key;
+        $request->queries = $queries;
+        return $request;
+    }
+
+    protected static function &transGetObjectTaggingInput(GetObjectTaggingInput &$input)
+    {
+        $bucket = self::checkBucket($input->getBucket());
+        $key = self::checkKey($input->getKey());
+        $queries = ['tagging' => ''];
+        if ($versionId = $input->getVersionID()) {
+            $queries[Constant::QueryVersionId] = $versionId;
+        }
+        $request = new HttpRequest();
+        $request->operation = 'getObjectTagging';
+        $request->method = Enum::HttpMethodGet;
+        $request->bucket = $bucket;
+        $request->key = $key;
+        $request->queries = $queries;
+        return $request;
+    }
+
+    protected static function &transDeleteObjectTaggingInput(DeleteObjectTaggingInput &$input)
+    {
+        $bucket = self::checkBucket($input->getBucket());
+        $key = self::checkKey($input->getKey());
+        $queries = ['tagging' => ''];
+        if ($versionId = $input->getVersionID()) {
+            $queries[Constant::QueryVersionId] = $versionId;
+        }
+        $request = new HttpRequest();
+        $request->operation = 'deleteObjectTagging';
+        $request->method = Enum::HttpMethodDelete;
+        $request->bucket = $bucket;
+        $request->key = $key;
+        $request->queries = $queries;
+        return $request;
+    }
+
     protected static function dealHttpBasicHeader(&$input, &$headers)
     {
         if ($cacheControl = $input->getCacheControl()) {
@@ -943,6 +1019,17 @@ trait InputTranslator
 
         if ($websiteRedirectLocation = $input->getWebsiteRedirectLocation()) {
             $headers[Constant::HeaderWebsiteRedirectLocation] = $websiteRedirectLocation;
+        }
+    }
+
+    protected static function dealTagging(&$input, &$headers, $withTaggingDirective = false)
+    {
+        if ($tagging = $input->getTagging()) {
+            $headers[Constant::HeaderTagging] = $tagging;
+        }
+
+        if ($withTaggingDirective && ($taggingDirective = $input->getTaggingDirective())) {
+            $headers[Constant::HeaderTaggingDirective] = $taggingDirective;
         }
     }
 

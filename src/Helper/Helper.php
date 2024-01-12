@@ -71,7 +71,8 @@ class Helper
         }
 
         $host = $domain;
-        if (($idx = strpos($domain, ':')) >= 0) {
+        $idx = strpos($domain, ':');
+        if (is_int($idx) && $idx >= 0) {
             $host = substr($domain, 0, $idx);
         }
 

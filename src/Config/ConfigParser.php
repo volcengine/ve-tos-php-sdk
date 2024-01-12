@@ -29,11 +29,12 @@ class ConfigParser
         'cn-beijing' => 'tos-cn-beijing.volces.com',
         'cn-guangzhou' => 'tos-cn-guangzhou.volces.com',
         'cn-shanghai' => 'tos-cn-shanghai.volces.com',
+        'ap-southeast-1' => 'tos-ap-southeast-1.volces.com',
     ];
     /**
      * @var string
      */
-    private $version = '2.1.8';
+    private $version = '2.1.9';
 
     /**
      * @var string
@@ -76,6 +77,10 @@ class ConfigParser
      * @var bool
      */
     private $enableVerifySSL = true;
+    /**
+     * @var bool
+     */
+    private $autoRecognizeContentType = true;
 
     public function __construct(array $config)
     {
@@ -127,6 +132,10 @@ class ConfigParser
 
         if (isset($config['enableVerifySSL'])) {
             $this->enableVerifySSL = boolval($config['enableVerifySSL']);
+        }
+
+        if (isset($config['autoRecognizeContentType'])) {
+            $this->autoRecognizeContentType = boolval($config['autoRecognizeContentType']);
         }
 
         $this->userAgent = 've-tos-php-sdk/' . $this->version . ' (' . PHP_OS . '/' . php_uname('m') . ';' . PHP_VERSION . ')';
@@ -242,4 +251,11 @@ class ConfigParser
         return $this->enableVerifySSL;
     }
 
+    /**
+     * @return bool
+     */
+    public function isAutoRecognizeContentType()
+    {
+        return $this->autoRecognizeContentType;
+    }
 }

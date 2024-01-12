@@ -42,6 +42,7 @@ class PutObjectTest extends TestCommon
         $testKeys[] = 'にほんご';
         $testKeys[] = 'Ελληνικά';
         $testKeys[] = '（!-_.*()/&$@=;:+ ,?\{^}%`]>[~<#|\'"）';
+        $testKeys[] = '//';
 
         // 上传各种有效字符的对象
         foreach ($testKeys as $testKey) {
@@ -132,7 +133,35 @@ class PutObjectTest extends TestCommon
         $this->assertEquals($output->getContent()->getContents(), '');
         $output->getContent()->close();
         $this->assertEquals($output->getContentLength(), 0);
+        $this->assertEquals($output->getContentType(), 'binary/octet-stream');
 
+        // 测试自动设置 MIME 类型
+        $keys = ['test', 'test.TXT', 'test.xml', 'test.jpg', 'test.HTML', 'test.json', 'test.mp4'];
+        $keysContentTypes = ['binary/octet-stream', 'text/plain', 'application/xml', 'image/jpeg',
+            'text/html', 'application/json', 'video/mp4'];
+        $contentTypes = ['text/plain', ''];
+        $index = 0;
+        foreach ($keys as $key) {
+            foreach ($contentTypes as $contentType) {
+                $input = new PutObjectInput($bucket, $key, null);
+                $input->setContentType($contentType);
+                $output = $client->putObject($input);
+                $this->assertTrue(strlen($output->getRequestId()) > 0);
+                $this->assertTrue(strlen($output->getETag()) > 0);
+
+                $output = $client->getObject(new GetObjectInput($bucket, $key));
+                $this->assertTrue(strlen($output->getRequestId()) > 0);
+                $this->assertEquals($output->getContent()->getContents(), '');
+                $output->getContent()->close();
+                $this->assertEquals($output->getContentLength(), 0);
+                if ($contentType) {
+                    $this->assertEquals($output->getContentType(), $contentType);
+                } else {
+                    $this->assertEquals($output->getContentType(), $keysContentTypes[$index]);
+                }
+            }
+            $index++;
+        }
     }
 
     public function testAbnormal()
