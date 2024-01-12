@@ -53,4 +53,7 @@ class Enum
     const HttpMethodPost = 'POST';
     const HttpMethodDelete = 'DELETE';
     const HttpMethodHead = 'HEAD';
+
+    const TaggingDirectiveCopy = 'Copy';
+    const TaggingDirectiveReplace = 'Replace';
 }
