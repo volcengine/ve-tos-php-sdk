@@ -145,4 +145,15 @@ trait EnumChecker
         return true;
     }
 
+    protected static function checkTaggingDirectiveType($taggingDirective)
+    {
+        switch ($taggingDirective) {
+            case Enum::TaggingDirectiveCopy:
+            case Enum::TaggingDirectiveReplace:
+                return true;
+            default:
+                throw new TosClientException('invalid tagging directive type');
+        }
+    }
+
 }

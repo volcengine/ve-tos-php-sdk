@@ -28,7 +28,8 @@ if (is_file(__DIR__ . '/../../autoload.php')) {
 if (is_file(__DIR__ . '/../../vendor/autoload.php')) {
     require_once __DIR__ . '/../../vendor/autoload.php';
 }
-error_reporting(E_ERROR | E_WARNING | E_PARSE | E_NOTICE);
+
+//error_reporting(E_ERROR | E_WARNING | E_PARSE | E_NOTICE);
 
 use PHPUnit\Framework\TestCase;
 use Tos\Exception\TosServerException;

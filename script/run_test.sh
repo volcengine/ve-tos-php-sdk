@@ -17,7 +17,3 @@ else
   ./composer.phar install --working-dir ../
   ./phpunit.phar ../test/Test --testdox > ../test/result.txt
 fi
-
-
-
-

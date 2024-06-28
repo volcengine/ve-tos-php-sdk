@@ -217,11 +217,11 @@ trait InputTranslator
         }
 
         if ($responseContentDisposition = $input->getResponseContentDisposition()) {
-            $queries[Constant::QueryResponseContentDisposition] = $responseContentDisposition;
+            $queries[Constant::QueryResponseContentDisposition] = Helper::urlEncodeChinese($responseContentDisposition);
         }
 
         if ($responseContentEncoding = $input->getResponseContentEncoding()) {
-            $queries[Constant::QueryResponseContentEncoding] = $responseContentEncoding;
+            $queries[Constant::QueryResponseContentEncoding] = Helper::urlEncodeChinese($responseContentEncoding);
         }
 
         if ($responseContentLanguage = $input->getResponseContentLanguage()) {
@@ -588,7 +588,7 @@ trait InputTranslator
             $bucket = self::checkBucket($input->getBucket());
             $key = self::checkKey($input->getKey());
 
-            $checkpointFile = trim($input->getCheckpointFile());
+            $checkpointFile = trim(strval($input->getCheckpointFile()));
             if (is_dir($checkpointFile)) {
                 $checkpointFile .= DIRECTORY_SEPARATOR . basename($filePath) . '.' . base64_encode(md5($bucket . '.' . $key)) . '.upload';
             } else if ($checkpointFile === '') {
@@ -1028,7 +1028,7 @@ trait InputTranslator
             $headers[Constant::HeaderTagging] = $tagging;
         }
 
-        if ($withTaggingDirective && ($taggingDirective = $input->getTaggingDirective())) {
+        if ($withTaggingDirective && ($taggingDirective = $input->getTaggingDirective()) && self::checkTaggingDirectiveType($taggingDirective)) {
             $headers[Constant::HeaderTaggingDirective] = $taggingDirective;
         }
     }
