@@ -87,10 +87,9 @@ class PutObjectTest extends TestCommon
         $output->getContent()->close();
         $this->assertEquals(count($output->getMeta()), 0);
 
-
         $input->setStorageClass(Enum::StorageClassIa);
         $input->setACL(Enum::ACLPublicRead);
-        $input->setContentDisposition('test-disposition');
+        $input->setContentDisposition('attachment; filename=中文.txt');
         $expires = time() + 3600;
         $input->setExpires($expires);
         $input->setMeta(['aaa' => 'bbb', '中文键' => '中文值']);

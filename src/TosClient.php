@@ -795,7 +795,7 @@ class TosClient
 
         if ($method === 'PutObject' || $method === 'PutObjectFromFile' || $method === 'AppendObject'
             || $method === 'SetObjectMeta' || $method === 'CreateMultipartUpload' || $method === 'UploadFile' || $method === 'ResumableCopyObject') {
-            $pos = strpos($request->key, '.');
+            $pos = strrpos($request->key, '.');
             if (is_int($pos) && $pos >= 0) {
                 $key = strtolower(substr($request->key, $pos + 1));
                 if (isset(self::$mimeTypes[$key])) {
